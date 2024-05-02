@@ -5,6 +5,7 @@
 '''
 
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from urllib.parse import urlparse, parse_qs
 import http.cookies
 import uuid
 
@@ -14,14 +15,19 @@ sessions = {}
 class HttpRequestHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
-        if self.path == '/':
+        parsed_path = urlparse(self.path)
+        path = parsed_path.path
+        query_params = parse_qs(parsed_path.query)
+
+        # Route the request based on the path
+        if path == '/':
             self.handle_index()
-        elif self.path == '/set-cookie':
-            self.handle_set_cookie()
-        elif self.path == '/get-cookie':
-            self.handle_get_cookie()
+        elif path == '/set-cookie':
+            self.handle_set_cookie(query_params)
+        elif path == '/get-cookie':
+            self.handle_get_cookie(query_params)
         else:
-            self.send_error(404, 'File Not Found: %s' % self.path)
+            self.send_error(404, 'File Not Found: %s' % path)
     
     def handle_index(self):
         cookie = self.get_cookie('session_id')
@@ -43,24 +49,37 @@ class HttpRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(message.encode('utf-8'))
 
     
-    def handle_set_cookie(self):
-        self.send_response(200)
-        self.send_header('Content-type', 'text/html')
-        key, val = 'test_cookie_emmaka', 'test_value_emmaka'
-        self.set_cookie(key, val)
-        # signals end of http headers section of the response.
-        # any further data sent after this line, to the client is considered part of the response body.
-        self.end_headers()
-        m = f"Cookie {key} set to {val}".encode('utf-8')
-        self.wfile.write(m)
+    def handle_set_cookie(self, params):
 
-    def handle_get_cookie(self):
-        cookie_value1 = self.get_cookie('test_cookie_emmaka') or 'No Cookie found!'
-        #cookie_value2 = self.get_cookie('sess')
-        self.send_response(200)
+        if 'key' in params and 'value' in params:
+            key = params['key'][0] # Extract the first value
+            val = params['value'][0]
+
+
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html')
+        
+            self.set_cookie(key, val)
+            # signals end of http headers section of the response.
+            # any further data sent after this line, to the client is considered part of the response body.
+            self.end_headers()
+            m = f"Cookie {key} set to {val}".encode('utf-8')
+            self.wfile.write(m)
+        else:
+            self.send_response(400)
+            self.end_headers()
+            self.wfile.write(b"Missing key or value parameters.")
+
+    def handle_get_cookie(self, params):
+
+        key = params.get('key', [None])[0] # Get the first value for 'key', defaulting to None
+        cookie_value = self.get_cookie(key) if key else 'No key provided'
+        self.send_response(200, 'OK')
         self.send_header('Content-type', 'text/html')
         self.end_headers()
-        self.wfile.write(f"Cookie value: {cookie_value1}".encode('utf-8'))
+        self.wfile.write(f"Cookie value for '{key}': {cookie_value}".encode('utf-8'))
+
+   
 
 
     def set_cookie(self, key, value):
