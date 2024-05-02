@@ -33,7 +33,7 @@ You will need Python 3 installed on your system to run this server. Python 3.6 o
    After cloning the repository, change into the project directory:
 
    ```bash
-   cd session_management
+   cd cookieSessionServer
    ```
 
 3. **Project Structure**
@@ -41,7 +41,7 @@ You will need Python 3 installed on your system to run this server. Python 3.6 o
    Ensure your project directory has the following structure:
 
    ```
-   /project-directory/
+   /cookieSessionServer/
    │
    ├── server.py (your Python script)
    └── templates/
