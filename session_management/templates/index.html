@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cookie Management</title>
+</head>
+<body>
+    <h1>Set or Get Cookies</h1>
+    <p id="sessionMessage">{{sessionMessage}}</p>
+    <form action="/set-cookie" method="get">
+        <label for="key">Cookie Key:</label>
+        <input type="text" id="key" name="key"><br><br>
+        <label for="value">Cookie Value:</label>
+        <input type="text" id="value" name="value"><br><br>
+        <input type="submit" value="Set Cookie">
+    </form>
+    <form action="/get-cookie" method="get">
+        <input type="submit" value="Get Cookies">
+    </form>
+</body>
+</html>

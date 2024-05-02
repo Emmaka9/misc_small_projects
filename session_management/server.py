@@ -8,11 +8,22 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
 import http.cookies
 import uuid
+import os
+import re
 
-# Simple session storage
+# session storage
 sessions = {}
 
 class HttpRequestHandler(BaseHTTPRequestHandler):
+
+    def load_html(self, fileName):
+        # print('current directory path:', os.getcwd())
+        
+        # current_dir = os.path.dirname(os.path.abspath(__file__))
+        # file_path = os.path.join(current_dir, fileName)
+        # print('emmaka', file_path)
+        with open(fileName, 'r') as file:
+            return file.read()
 
     def do_GET(self):
         parsed_path = urlparse(self.path)
@@ -25,20 +36,23 @@ class HttpRequestHandler(BaseHTTPRequestHandler):
         elif path == '/set-cookie':
             self.handle_set_cookie(query_params)
         elif path == '/get-cookie':
-            self.handle_get_cookie(query_params)
+            self.handle_get_cookie()
         else:
             self.send_error(404, 'File Not Found: %s' % path)
     
     def handle_index(self):
+        content = self.load_html("/home/emmaka/workplace_emmaka/misc_small_projects/session_management/templates/index.html")
         cookie = self.get_cookie('session_id')
         session_id = cookie if cookie else str(uuid.uuid4())
 
         if session_id not in sessions:
             sessions[session_id] = {'visits': 1}
-            message = f"Hello, new visitor! A session has been creted for for you! ID:{session_id}"
+            session_message = f"Hello, new visitor! A session has been creted for for you! ID:{session_id}"
         else:
             sessions[session_id]['visits'] += 1
-            message = f"Hello again! You have visited {sessions[session_id]['visits']} times."
+            session_message = f"Hello again! You have visited {sessions[session_id]['visits']} times."
+        
+        content = content.replace("{{sessionMessage}}", session_message)
 
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
@@ -46,19 +60,26 @@ class HttpRequestHandler(BaseHTTPRequestHandler):
         if not cookie:
             self.set_cookie('session_id', session_id)
         self.end_headers()
-        self.wfile.write(message.encode('utf-8'))
+        self.wfile.write(content.encode('utf-8'))
 
     
     def handle_set_cookie(self, params):
 
-        if 'key' in params and 'value' in params:
-            key = params['key'][0] # Extract the first value
-            val = params['value'][0]
+        key = params.get('key', [None])[0] # Extract the first value
+        val = params.get('value', [None])[0]
 
+        if key and val:
+            key = self.sanitize_cookie_value(key)
+            val = self.sanitize_cookie_value(val)
 
-            self.send_response(200)
-            self.send_header('Content-type', 'text/html')
-        
+            if not key: # check if key is empty after sanitization
+                self.send_response(400, 'BAD REQUEST')
+                self.end_headers()
+                self.wfile.write(b"Invalid cookie key provided!")
+                return
+
+            self.send_response(303, "See Other!")
+            self.send_header('Location', '/')
             self.set_cookie(key, val)
             # signals end of http headers section of the response.
             # any further data sent after this line, to the client is considered part of the response body.
@@ -70,14 +91,30 @@ class HttpRequestHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(b"Missing key or value parameters.")
 
-    def handle_get_cookie(self, params):
-
-        key = params.get('key', [None])[0] # Get the first value for 'key', defaulting to None
-        cookie_value = self.get_cookie(key) if key else 'No key provided'
+    def handle_get_cookie(self):
         self.send_response(200, 'OK')
         self.send_header('Content-type', 'text/html')
         self.end_headers()
-        self.wfile.write(f"Cookie value for '{key}': {cookie_value}".encode('utf-8'))
+        
+        cookie_message = '''
+        <html>
+            <body>
+                Stored Cookies:
+            </body>
+        </html>
+        '''
+        cookie_header = self.headers.get('Cookie')
+        if cookie_header:
+            cookie = http.cookies.SimpleCookie(cookie_header)
+            for key, morsel in cookie.items():
+                cookie_message += f'''<p>
+                    {key}: {morsel.value}
+                </p>'''
+        else:
+            cookie_message += "<p> No cookies found. </p>"
+        cookie_message += '<br> <a href="/">Back</a></html> '
+        
+        self.wfile.write(cookie_message.encode('utf-8'))
 
    
 
@@ -103,8 +140,11 @@ class HttpRequestHandler(BaseHTTPRequestHandler):
         cookie_header = self.headers.get('Cookie')
         if cookie_header:
             cookie = http.cookies.SimpleCookie(cookie_header)
-            return cookie.get(key).value if key in cookie else None
-        
+            return cookie.get(key).value if key in cookie else 'Cookie Not Found!'
+
+
+    def sanitize_cookie_value(self, value):
+        return re.sub(r'[^\w!#$%&\'*+-.^_`|~]', '', value)
     
 
 def run(server_class=HTTPServer, handler_class=HttpRequestHandler, port=8000):
