@@ -1,5 +1,3 @@
-Creating a comprehensive README file for your server application is crucial for onboarding new developers, documenting the setup process, and outlining the application's functionality. Here's a suggested README structure and content for your Python HTTP server that handles session management and cookie operations:
-
 ---
 
 # Python HTTP Server for Session and Cookie Management
@@ -78,5 +76,3 @@ Contributions to this project are welcome! Please follow these steps to contribu
 This project is licensed under the MIT License - see the [LICENSE](https://github.com/Emmaka9/misc_small_projects/blob/main/LICENSE) file for details.
 
 ---
-
-This README provides all the necessary information to get started with the project, including system requirements, setup instructions, and how to use the server. Adjust the repository URL and any specific details to match your project's actual setup and repository location.
